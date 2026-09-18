@@ -1,0 +1,143 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.XR;
+
+public class DanteMenuController : MonoBehaviour
+{
+    [Header("Menu Settings")]
+    public GameObject menuCanvasUI; // Assign your Hot Pink UI Canvas here
+    private bool isMenuOpen = false;
+
+    [Header("Feature Toggles")]
+    public bool isFlyingEnabled = false;
+    public bool isRpgMiniGunActive = false;
+
+    // XR Input Devices
+    private InputDevice leftController;
+    private InputDevice rightController;
+
+    void Start()
+    {
+        InitializeDevices();
+        if (menuCanvasUI != null)
+        {
+            menuCanvasUI.SetActive(false);
+        }
+    }
+
+    void InitializeDevices()
+    {
+        var leftDevices = new List<InputDevice>();
+        InputDevices.GetDevicesAtXRNode(XRNode.LeftHand, leftDevices);
+        if (leftDevices.Count > 0) leftController = leftDevices[0];
+
+        var rightDevices = new List<InputDevice>();
+        InputDevices.GetDevicesAtXRNode(XRNode.RightHand, rightDevices);
+        if (rightDevices.Count > 0) rightController = rightDevices[0];
+    }
+
+    void Update()
+    {
+        // Re-check devices if they disconnected/reconnected
+        if (!leftController.isValid || !rightController.isValid)
+        {
+            InitializeDevices();
+        }
+
+        CheckMenuToggleInput();
+        CheckRightTriggerActions();
+        CheckAButtonActions();
+    }
+
+    // Press "X" Button to toggle the Hot Pink DANTÈ MENU
+    void CheckMenuToggleInput()
+    {
+        if (leftController.TryGetFeatureValue(CommonUsages.primaryButton, out bool xButtonPressed) && xButtonPressed)
+        {
+            // Debounce check can be added here if needed to prevent rapid toggling
+            ToggleMenu();
+        }
+    }
+
+    void ToggleMenu()
+    {
+        isMenuOpen = !isMenuOpen;
+        if (menuCanvasUI != null)
+        {
+            menuCanvasUI.SetActive(isMenuOpen);
+            Debug.Log($"DANTÈ MENU visibility: {isMenuOpen}");
+        }
+    }
+
+    // Press "Right Trigger" + Actions (Flying, Kick Gun, Spawn Gun, RPG Mini Gun)
+    void CheckRightTriggerActions()
+    {
+        if (rightController.TryGetFeatureValue(CommonUsages.triggerButton, out float rightTriggerValue) && rightTriggerValue > 0.1f)
+        {
+            // If the menu is open or modifier is active, handle trigger-based tools
+            if (isFlyingEnabled)
+            {
+                ExecuteFlying();
+            }
+
+            if (isRpgMiniGunActive)
+            {
+                ExecuteRpgMiniGun();
+            }
+        }
+    }
+
+    // Press "A" Button to change size or color of items
+    void CheckAButtonActions()
+    {
+        if (rightController.TryGetFeatureValue(CommonUsages.secondaryButton, out bool aButtonPressed) && aButtonPressed)
+        {
+            // Assuming the player is looking at or holding an item
+            ChangeItemSize();
+            ChangeItemColor();
+        }
+    }
+
+    // --- Core Feature Stubs ---
+    
+    public void KickAllPlayers()
+    {
+        Debug.Log("[DANTÈ MENU] Executing: Kick All Players");
+        // Add network RPC or command logic here
+    }
+
+    public void TeleportAllToMe()
+    {
+        Debug.Log("[DANTÈ MENU] Executing: Teleport All Players to You");
+    }
+
+    public void TeleportToMap(string mapName)
+    {
+        Debug.Log($"[DANTÈ MENU] Executing: Teleporting to map -> {mapName}");
+    }
+
+    public void MakePlayersOrbit()
+    {
+        Debug.Log("[DANTÈ MENU] Executing: Make Players Orbit You");
+    }
+
+    private void ExecuteFlying()
+    {
+        // Add upward velocity or flight logic
+    }
+
+    private void ExecuteRpgMiniGun()
+    {
+        // Rapid-fire spawn/shoot RPG projectile logic
+    }
+
+    private void ChangeItemSize()
+    {
+        Debug.Log("[DANTÈ MENU] Item property modified: Size changed.");
+    }
+
+    private void ChangeItemColor()
+    {
+        Debug.Log("[DANTÈ MENU] Item property modified: Color changed.");
+    }
+}

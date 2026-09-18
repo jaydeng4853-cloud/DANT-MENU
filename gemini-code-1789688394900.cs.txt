@@ -1,0 +1,116 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.XR;
+
+public class DanteSpawnGun : MonoBehaviour
+{
+    [Header("Spawn Gun Settings")]
+    public Transform muzzlePoint; // Tip of the gun where items materialize
+    public float spawnForce = 5f;
+
+    [System.Serializable]
+    public struct GameItem
+    {
+        public string itemName;
+        public GameObject itemPrefab;
+    }
+
+    [Header("Item Registry")]
+    public List<GameItem> availableItems = new List<GameItem>();
+    private Dictionary<string, GameObject> itemDictionary = new Dictionary<string, GameObject>();
+
+    [Header("Current Selection")]
+    public string selectedItemName = "Minigun"; // Default spawn item
+
+    private InputDevice rightController;
+    private bool triggerWasPressed = false;
+
+    void Start()
+    {
+        // Build a fast-lookup dictionary for items
+        foreach (var item in availableItems)
+        {
+            if (!itemDictionary.ContainsKey(item.itemName))
+            {
+                itemDictionary.Add(item.itemName, item.itemPrefab);
+            }
+        }
+        InitializeController();
+    }
+
+    void InitializeController()
+    {
+        var devices = new List<InputDevice>();
+        InputDevices.GetDevicesAtXRNode(XRNode.RightHand, devices);
+        if (devices.Count > 0)
+        {
+            rightController = devices[0];
+        }
+    }
+
+    void Update()
+    {
+        if (!rightController.isValid)
+        {
+            InitializeController();
+            return;
+        }
+
+        // Read Right Trigger input
+        if (rightController.TryGetFeatureValue(CommonUsages.triggerButton, out float triggerValue))
+        {
+            bool isPressed = triggerValue > 0.8f;
+
+            // Trigger down event (fires once per pull)
+            if (isPressed && !triggerWasPressed)
+            {
+                SpawnSelectedObject();
+            }
+            triggerWasPressed = isPressed;
+        }
+    }
+
+    public void SetSelectedItem(string newItemName)
+    {
+        if (itemDictionary.ContainsKey(newItemName))
+        {
+            selectedItemName = newItemName;
+            Debug.Log($"[DANTÈ MENU] Spawn Gun active item changed to: {newItemName}");
+        }
+        else
+        {
+            Debug.LogWarning($"[DANTÈ MENU] Item '{newItemName}' not found in registry.");
+        }
+    }
+
+    private void SpawnSelectedObject()
+    {
+        if (itemDictionary.TryGetValue(selectedItemName, out GameObject prefab))
+        {
+            Transform spawnOrigin = muzzlePoint != null ? muzzlePoint : transform;
+
+            // Instantiate the item prefab in the game world
+            GameObject spawnedItem = Instantiator(prefab, spawnOrigin);
+
+            Debug.Log($"[DANTÈ MENU] Successfully spawned: {selectedItemName}");
+        }
+        else
+        {
+            Debug.LogWarning($"[DANTÈ MENU] Could not spawn '{selectedItemName}'. Check item registry.");
+        }
+    }
+
+    private GameObject Instantiator(GameObject prefab, Transform origin)
+    {
+        GameObject item = Instantiate(prefab, origin.position, origin.rotation);
+        
+        // Add velocity if the item has physics rigidbodies
+        Rigidbody rb = item.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.AddForce(origin.forward * spawnForce, ForceMode.Impulse);
+        }
+
+        return item;
+    }
+}
